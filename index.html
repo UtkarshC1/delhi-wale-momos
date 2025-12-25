@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delhi Wale Momos | Authentic Taste</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Playfair+Display:ital,wght@1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+    <header id="navbar">
+        <div class="nav-container">
+            <div class="logo">Delhi Wale <span>Momos</span></div>
+            <button class="cart-trigger" onclick="toggleCart()">
+                <div class="cart-icon-box">
+                    <i class="fas fa-shopping-bag"></i>
+                    <span id="cart-count" class="badge">0</span>
+                </div>
+                <span class="cart-text">View Cart</span>
+            </button>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <div class="tagline"><i class="fas fa-fire"></i> &nbsp; Best Street Food in Town</div>
+            <h1>THE <span class="gold-text">VIRAT KOHLI</span> SPECIAL</h1>
+            <p>Crunchy, Spicy, and Loaded. The viral taste of Delhi is now here.</p>
+            
+            <div class="hero-btns">
+                <button class="btn btn-primary" onclick="scrollToSection('menu')">
+                    <i class="fas fa-utensils"></i> Order Pickup
+                </button>
+                <button class="btn btn-outline" onclick="scrollToSection('location')">
+                    <i class="fas fa-map-marker-alt"></i> Visit Stall
+                </button>
+            </div>
+
+            <div class="trust-badges">
+                <div class="badge-item"><i class="fas fa-shield-alt"></i> 100% Safe</div>
+                <div class="badge-item"><i class="fas fa-award"></i> FSSAI Approved</div>
+                <div class="badge-item"><i class="fas fa-leaf"></i> Pure Veg Options</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="menu-section" id="menu">
+        <div class="section-header">
+            <h2>Our Menu</h2>
+            <div class="divider"></div>
+            <p>Select a category to browse</p>
+        </div>
+
+        <div class="menu-filters">
+            <button class="filter-btn active" onclick="filterMenu('all')">All</button>
+            <button class="filter-btn" onclick="filterMenu('momos')">Momos</button>
+            <button class="filter-btn" onclick="filterMenu('rolls')">Rolls</button>
+            <button class="filter-btn" onclick="filterMenu('lassi')">Lassi</button>
+            <button class="filter-btn" onclick="filterMenu('combo')">Combos</button>
+        </div>
+
+        <div class="grid-container" id="menu-grid">
+            </div>
+    </section>
+
+    <section class="location-section" id="location">
+        <div class="section-header">
+            <h2>Visit Us</h2>
+            <div class="divider"></div>
+            <p>Come taste it hot & fresh at our stall</p>
+        </div>
+        <div class="map-container">
+            <iframe 
+                src="https://maps.google.com/maps?q=Delhi&t=&z=13&ie=UTF8&iwloc=&output=embed" 
+                width="100%" height="450" style="border:0;" allowfullscreen="" loading="lazy">
+            </iframe>
+        </div>
+    </section>
+
+    <footer>
+        <div class="footer-content">
+            <h3>Delhi Wale Momos</h3>
+            <p>Powered by Chef Express | 📞 88029 25263</p>
+            <div class="socials">
+                <i class="fab fa-instagram"></i>
+                <i class="fab fa-whatsapp"></i>
+                <i class="fab fa-facebook"></i>
+            </div>
+            <p class="copyright">&copy; 2025 Delhi Wale Momos. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <div class="modal-backdrop" id="variant-modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="closeModal('variant-modal')">&times;</button>
+            <h3 id="modal-title">Select Size</h3>
+            <p class="modal-subtitle">Choose your portion</p>
+            <div class="modal-options" id="modal-options"></div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="payment-modal">
+        <div class="modal-content payment-box">
+            <button class="close-modal" onclick="closeModal('payment-modal')">&times;</button>
+            
+            <div class="payment-header">
+                <h3><i class="fas fa-receipt"></i> Order Summary</h3>
+            </div>
+
+            <div class="order-token-box">
+                <p>ORDER TOKEN</p>
+                <h2 id="generated-token">#----</h2>
+                <p class="token-hint">Show this to the chef</p>
+            </div>
+
+            <div class="qr-container">
+                <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=8802925263@upi&pn=DelhiWaleMomos" class="qr-image">
+                <p class="qr-instruction">Total Payable: <span id="final-pay-amount">₹0</span></p>
+            </div>
+
+            <div class="upload-section">
+                <p class="upload-label">Attach Payment Screenshot 👇</p>
+                <label for="payment-screenshot" class="upload-box" id="upload-box-label">
+                    <i class="fas fa-camera"></i>
+                    <span id="upload-text">Click to Upload Proof</span>
+                    <input type="file" id="payment-screenshot" accept="image/*" onchange="previewImage(event)">
+                </label>
+                <img id="image-preview" class="image-preview" style="display:none;">
+            </div>
+
+            <button class="btn btn-whatsapp" onclick="sendOrderToWhatsapp()">
+                <i class="fab fa-whatsapp"></i> Send Order on WhatsApp
+            </button>
+        </div>
+    </div>
+
+    <div class="cart-sidebar" id="cart-sidebar">
+        <div class="cart-header">
+            <h3>Your Cart</h3>
+            <button onclick="toggleCart()" class="close-cart"><i class="fas fa-times"></i></button>
+        </div>
+        
+        <div class="cart-actions">
+            <button onclick="clearCart()" class="clear-cart-btn">Clear All</button>
+        </div>
+
+        <div class="cart-body" id="cart-items-container"></div>
+
+        <div class="cart-footer">
+            <button class="btn-add-more" onclick="toggleCart()">
+                <i class="fas fa-plus-circle"></i> Add More Items
+            </button>
+            
+            <div class="bill-details">
+                <div class="bill-row total"><span>Total</span><span id="cart-total-price">₹0</span></div>
+            </div>
+            <button class="btn btn-primary btn-block" onclick="checkout()">
+                Checkout <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
