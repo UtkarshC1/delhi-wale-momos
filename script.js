@@ -29,17 +29,47 @@ const menuItems = [
 ];
 
 /* --- STATE --- */
-let cart = [];
+let cart = JSON.parse(localStorage.getItem('dvm_cart')) || [];
 let currentOrderToken = "";
+let currentCategory = 'all';
 
 /* --- INIT --- */
 const menuGrid = document.getElementById('menu-grid');
 renderMenu();
+updateCartUI();
 
-/* --- RENDER MENU --- */
-function renderMenu(category = 'all') {
+// Back to Top Logic
+window.onscroll = function() {
+    const btn = document.getElementById("back-to-top");
+    if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+        btn.style.display = "block";
+    } else {
+        btn.style.display = "none";
+    }
+};
+
+function scrollToTop() {
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+/* --- RENDER MENU & SEARCH --- */
+function renderMenu(category = 'all', searchTerm = '') {
+    currentCategory = category;
     menuGrid.innerHTML = '';
-    const items = category === 'all' ? menuItems : menuItems.filter(i => i.category === category);
+    
+    const term = searchTerm.toLowerCase();
+    
+    // Filter by category AND search term
+    const items = menuItems.filter(i => {
+        const matchesCategory = category === 'all' || i.category === category;
+        const matchesSearch = i.name.toLowerCase().includes(term) || i.desc.toLowerCase().includes(term);
+        return matchesCategory && matchesSearch;
+    });
+    
+    if (items.length === 0) {
+        menuGrid.innerHTML = '<p style="text-align:center; grid-column:1/-1; color:#888;">No items found.</p>';
+        return;
+    }
     
     items.forEach(item => {
         const startPrice = item.price.half || item.price.single;
@@ -47,7 +77,7 @@ function renderMenu(category = 'all') {
         card.className = 'card';
         card.innerHTML = `
             <div class="card-img-box">
-                <img src="${item.image}" alt="${item.name}">
+                <img src="${item.image}" alt="${item.name}" loading="lazy">
                 <div class="type-badge ${item.type === 'veg' ? 'veg' : 'non-veg'}">
                     ${item.type === 'veg' ? 'VEG' : 'NON-VEG'}
                 </div>
@@ -67,10 +97,19 @@ function renderMenu(category = 'all') {
     });
 }
 
-function filterMenu(cat) {
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-    event.target.classList.add('active');
+function filterMenu(cat, event) {
+    if(event) {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+    }
+    // Clear search when switching categories
+    document.getElementById('search-input').value = '';
     renderMenu(cat);
+}
+
+function handleSearch() {
+    const term = document.getElementById('search-input').value;
+    renderMenu(currentCategory, term);
 }
 
 /* --- ADD TO CART LOGIC --- */
@@ -109,8 +148,14 @@ function addToCart(item, variant, price) {
     const existing = cart.find(i => i.id === item.id && i.variant === variant);
     if(existing) existing.qty++;
     else cart.push({ ...item, variant, price, qty: 1 });
+    
+    saveCart();
     updateCartUI();
     toggleCart(true);
+}
+
+function saveCart() {
+    localStorage.setItem('dvm_cart', JSON.stringify(cart));
 }
 
 /* --- CART UI --- */
@@ -153,11 +198,22 @@ function updateCartUI() {
 
 function updateQty(idx, change) {
     if(cart[idx].qty + change <= 0) removeFromCart(idx);
-    else { cart[idx].qty += change; updateCartUI(); }
+    else { cart[idx].qty += change; saveCart(); updateCartUI(); }
 }
 
-function removeFromCart(idx) { cart.splice(idx, 1); updateCartUI(); }
-function clearCart() { if(confirm("Clear cart?")) { cart = []; updateCartUI(); } }
+function removeFromCart(idx) { 
+    cart.splice(idx, 1); 
+    saveCart(); 
+    updateCartUI(); 
+}
+
+function clearCart() { 
+    if(confirm("Clear cart?")) { 
+        cart = []; 
+        saveCart(); 
+        updateCartUI(); 
+    } 
+}
 
 function toggleCart(forceOpen) {
     const sidebar = document.getElementById('cart-sidebar');
@@ -166,16 +222,31 @@ function toggleCart(forceOpen) {
     else sidebar.classList.toggle('active');
 }
 
-/* --- CHECKOUT & IMAGE PREVIEW --- */
+/* --- CHECKOUT & TIME CHECK --- */
 function checkout() {
     if(cart.length === 0) return alert("Cart is empty!");
+
+    // Simple Operating Hours Check (10 AM to 10 PM)
+    const hour = new Date().getHours();
+    if (hour < 10 || hour >= 22) {
+         if(!confirm("⚠️ The shop is currently closed (10 AM - 10 PM). Place order anyway?")) return;
+    }
     
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    currentOrderToken = `#DVM-${randomNum}`;
+    // Better Token Generation (Date + Random)
+    const uniquePart = Date.now().toString(36).substring(7).toUpperCase();
+    const randomPart = Math.floor(1000 + Math.random() * 9000);
+    currentOrderToken = `#DVM-${uniquePart}-${randomPart}`;
     
-    const total = document.getElementById('cart-total-price').innerText;
-    document.getElementById('final-pay-amount').innerText = total;
+    // Calculate Total
+    const total = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
+    document.getElementById('final-pay-amount').innerText = '₹' + total;
     document.getElementById('generated-token').innerText = currentOrderToken;
+
+    // Dynamic UPI Link (With Amount)
+    // Format: upi://pay?pa=ADDRESS&pn=NAME&am=AMOUNT
+    const upiString = `upi://pay?pa=8802925263@upi&pn=DelhiWaleMomos&am=${total}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
+    document.getElementById('dynamic-qr-code').src = qrUrl;
     
     toggleCart(false);
     document.getElementById('payment-modal').style.display = 'flex';
@@ -194,38 +265,43 @@ function previewImage(event) {
     reader.readAsDataURL(event.target.files[0]);
 }
 
-/* --- PERFECT WHATSAPP QUERY LOGIC --- */
+/* --- WHATSAPP QUERY LOGIC --- */
 function sendOrderToWhatsapp() {
     const phoneNumber = "918802925263"; 
     
     // Check for screenshot visual confirmation
     const fileInput = document.getElementById('payment-screenshot');
-    if(fileInput.files.length === 0) {
-        if(!confirm("⚠️ You haven't attached a screenshot yet. Send anyway?")) return;
-    }
+    const hasImage = fileInput.files.length > 0;
 
-    // Build perfect bill format using new lines (\n)
-    let msg = `*🧾 DELHI WALE MOMOS - BILL*\n`;
+    let msg = `*🧾 DELHI WALE MOMOS - NEW ORDER*\n`;
     msg += `*Order Token:* ${currentOrderToken}\n`;
     msg += `-----------------------------------\n`;
     msg += `*ITEM NAME* | *QTY* | *AMT*\n`;
     msg += `-----------------------------------\n`;
     
+    let total = 0;
     cart.forEach(item => {
         let cleanName = item.name.replace("Momos", "").trim();
         // Truncate if too long to keep alignment decent
         if(cleanName.length > 18) cleanName = cleanName.substring(0, 16) + "..";
+        let itemTotal = item.price * item.qty;
+        total += itemTotal;
         
         msg += `▪️ ${cleanName} (${item.variant})\n`;
-        msg += `   x${item.qty}  ----------  ₹${item.price * item.qty}\n`; 
+        msg += `   x${item.qty}  ----------  ₹${itemTotal}\n`; 
     });
     
-    const total = document.getElementById('final-pay-amount').innerText;
     msg += `-----------------------------------\n`;
-    msg += `*GRAND TOTAL: ${total}*\n`;
+    msg += `*GRAND TOTAL: ₹${total}*\n`;
     msg += `-----------------------------------\n`;
-    msg += `Payment Status: ✅ Online Verified\n`;
-    msg += `(Screenshot Attached Below)\n`;
+    
+    if(hasImage) {
+        msg += `Payment Status: ⚠️ *Screenshot Attached Manually*\n`;
+        msg += `(Customer has selected a file)\n`;
+    } else {
+        msg += `Payment Status: ⏳ *Pending/Cash*\n`;
+    }
+    
     msg += `-----------------------------------\n`;
     msg += `📍 *Please prepare my order!*`;
 
@@ -233,10 +309,17 @@ function sendOrderToWhatsapp() {
     const encodedMsg = encodeURIComponent(msg);
     const url = `https://wa.me/${phoneNumber}?text=${encodedMsg}`;
     
-    alert("Opening WhatsApp...\n\nPlease paste/attach the screenshot you selected in the chat!");
+    // Important Alert for User
+    alert("📢 Opening WhatsApp...\n\nIMPORTANT: The screenshot you selected CANNOT be attached automatically.\n\n👉 Please PASTE or ATTACH the photo manually in the chat!");
+    
     window.open(url, '_blank');
     
-    cart = []; updateCartUI(); closeModal('payment-modal');
+    // Cleanup
+    cart = []; 
+    saveCart();
+    updateCartUI(); 
+    closeModal('payment-modal');
+    
     // Reset file input preview
     document.getElementById('image-preview').style.display = 'none';
     document.getElementById('upload-text').innerText = "Click to Upload Proof";
@@ -244,4 +327,6 @@ function sendOrderToWhatsapp() {
     document.getElementById('upload-box-label').style.borderColor = '#444';
 }
 
-function scrollToSection(id) { document.getElementById(id).scrollIntoView({behavior:'smooth'}); }
+function scrollToSection(id) { 
+    document.getElementById(id).scrollIntoView({behavior:'smooth'}); 
+}
